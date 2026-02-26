@@ -192,7 +192,7 @@ aspect <- idw_pred %>%
   dplyr::select(elev_m = var1.pred) %>%
   terra::rast() %>%
   terra::terrain(v = "aspect",
-                 unit = "radian") %>%
+                 unit = "degrees") %>%
   st_as_stars() %>%
   st_set_crs(value =  6345)
 
@@ -202,7 +202,7 @@ aspect
 
 ```{r aspect map}
 aspect_map <- ggplot()+
-  geom_...(data = aspect)+
+  geom_stars(data = aspect)+
   geom_sf(data = boundary_w, 
           fill = NA)+
   scale_fill_viridis_b(option = "E",
@@ -213,7 +213,8 @@ aspect_map <- ggplot()+
                                   202.5,
                                   247.5,
                                   292.5,
-                                  337.5))+
+                                  337.5),
+                       na.value = "white")+
   labs(fill="Aspect\n(degrees)")+
   mytheme_map
 
