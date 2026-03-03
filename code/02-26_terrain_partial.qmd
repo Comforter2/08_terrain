@@ -143,7 +143,9 @@ elev_map <- ggplot() +
   geom_stars(data = idw_pred) +
   geom_sf(data = boundary_w, fill = NA) +
   scale_fill_viridis_b(option = "E",
-                       na.value = "white") #+
+                       na.value = "white") +
+  labs(fill = "Elev. (m)") +
+  mytheme_map
   
 
 elev_map
@@ -194,7 +196,7 @@ aspect <- idw_pred %>%
   terra::terrain(v = "aspect",
                  unit = "degrees") %>%
   st_as_stars() %>%
-  st_set_crs(value =  6345)
+  st_set_crs(value =  6345) # not compulsory to include this
 
 aspect
 ```
@@ -226,17 +228,18 @@ aspect_map
 flowdir <- idw_pred %>%
   dplyr::select(elev_m = var1.pred) %>%
   terra::rast() %>%
-  ...
+  terra::terrain("flowdir",
+                 unit = "radians") %>%
   st_as_stars() %>%
   st_set_crs(value =  6345)
 
 flowdir
 ```
 
-
+The NAs are coming from the near-the-boundary cells, which were dropped off as the cells surrounding them are not available to compute the cell values.
 ```{r flowdir map}
 flowdir_map <- ggplot()+
-  geom_...(data = flowdir)+
+  geom_stars(data = flowdir)+
   geom_sf(data = boundary_w, 
           fill = NA)+
   scale_fill_viridis_b(option = "E",
@@ -251,7 +254,15 @@ flowdir_map
 ```
 
 ```{r flowdir map 2}
-ggplot()
+ggplot() +
+  geom_stars(data = flowdir %>%
+               mutate(flowdir = factor(flowdir)))+
+  geom_sf(data = boundary_w, 
+          fill = NA)+
+  labs(fill="Flow dir.")+
+  mytheme_map +
+  facet_wrap(~flowdir) +
+  theme(legend.position = "none")
 
 ```
 ## Quiz 
@@ -268,40 +279,55 @@ ggsave("../output/terrain.png",
 
 # Grid extraction  
 ```{r elev_v}
-elev_v 
+elev_v = idw_pred %>%
+  st_as_sf(as_points = F,
+           merge = F) %>%
+  dplyr::select(elev_m = var1.pred)
 
 elev_v
 ```
 How many rows? What we expected?  
 
 ```{r slope_v}
-slope_v 
+slope_v = slope %>%
+  st_as_sf(as_points = F,
+           merge = F) %>%
+  dplyr::select(slope = pct)
 
 slope_v
 ```
-How many rows? Why is that?  
+How many rows? Why is that?  We have lower rows because the cells near the boundary do not have neighbours so we cannot estimate the slope.
 
 ```{r aspect_v}
-aspect_v <- ... %>%
+aspect_v <- aspect %>%
   st_as_sf(as_points = F, 
-           merge = F) %>%
-  dplyr::select(aspect = values) 
+           merge = F)
+  
 
 aspect_v
 ```
-```{r flowdir_v}
-flowdir_v <- ... %>%
-  st_as_sf(as_points = F, 
-           merge = F) %>%
-  dplyr::select(flowdir = values) 
 
+
+```{r flowdir_v}
+flowdir_v <- flowdir %>%
+  st_as_sf(as_points = F, 
+           merge = F)
 flowdir_v
 ```
 
 # Joining all topo variables in one object  
 
 ```{r terrain_v }
-terrain_v 
+terrain_v = elev_v %>%
+  st_join(slope_v,
+          join = st_equals,
+          left = T) %>%
+  st_join(aspect_v,
+          join = st_equals,
+          left = T) %>%
+  st_join(flowdir_v,
+          join = st_equals,
+          left = T)
 
 terrain_v %>%
   summary()
@@ -310,7 +336,9 @@ terrain_v %>%
 # Exporting  
 Exporting to file to use later for management zone creation.  
 ```{r exporting}
-
+write_sf(terrain_v, 
+         "../data/terrain_v.geojson",
+         delete_dsn = T)
 
 ```
 
